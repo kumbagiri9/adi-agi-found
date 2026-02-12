@@ -1,0 +1,56 @@
+# adi-agi-found 3.1.1 — Verified Multimodal Swarm OS (Rebuilt)
+This build is regenerated after an execution-session reset.
+
+**Includes**
+- OpenAI-compatible proxy (`/v1/chat/completions`, `/v1/models`, `/metrics`, `/health`)
+- Streaming passthrough (SSE style line streaming)
+- Retries + DLQ + audit logs + circuit breaker
+- Swarm + evaluators + verifier gate (`adi-agi-found-swarm`)
+- Offline tool sandbox (allowlisted Python)
+- Memory graph + fact store + contradiction engine
+
+> Ships **no weights**. Plug open-weight backends via vLLM or any OpenAI-compatible server.
+
+## Quickstart (Docker)
+```bash
+unzip adi-agi-found-3.1.1.zip
+cd adi-agi-found-3.1.1
+cp .env.example .env
+
+VLLM_TEXT_MODEL_ID=deepseek-ai/DeepSeek-R1-Distill-Qwen-7B \
+docker compose --profile text --profile proxy up -d
+```
+
+Optional services:
+```bash
+docker compose --profile sandbox up -d
+docker compose --profile asr up -d
+docker compose --profile tts up -d
+```
+
+## Sandbox test
+```bash
+curl -s http://localhost:9000/v1/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"python","code":"import math\nprint(math.sqrt(81))\n2+2"}'
+```
+
+## Contradiction engine test
+```bash
+curl -s http://localhost:9000/v1/memory/facts/upsert \
+  -H "Content-Type: application/json" \
+  -d '{"facts":[{"subject":"PatientA","predicate":"has_condition","object":"Diabetes","polarity":"true","confidence":0.9,"provenance":"note1"}]}'
+
+curl -s http://localhost:9000/v1/memory/facts/upsert \
+  -H "Content-Type: application/json" \
+  -d '{"facts":[{"subject":"PatientA","predicate":"has_condition","object":"Hypertension","polarity":"true","confidence":0.9,"provenance":"note2"}]}'
+
+curl -s http://localhost:9000/v1/memory/contradictions/query \
+  -H "Content-Type: application/json" \
+  -d '{"subject":"PatientA","predicate":"has_condition"}'
+```
+
+## Tests
+```bash
+python tests/run_unittests.py
+```

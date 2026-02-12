@@ -1,0 +1,57 @@
+services:
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proxy
+    env_file: [.env]
+    environment:
+      - FOUND_PORT=9000
+      - HF_TOKEN=${HF_TOKEN:-}
+    ports: ["9000:9000"]
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - vllm-text
+    profiles: ["proxy"]
+
+  vllm-text:
+    image: vllm/vllm-openai:latest
+    command: >
+      --host 0.0.0.0
+      --port 8000
+      --model ${VLLM_TEXT_MODEL_ID}
+      --dtype auto
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      - ${HF_HOME:-~/.cache/huggingface}:/root/.cache/huggingface
+    ports: ["8000:8000"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    profiles: ["text"]
+
+  sandbox:
+    build:
+      context: tools/sandbox_service
+      dockerfile: Dockerfile
+    ports: ["7010:7010"]
+    volumes:
+      - ./data:/app/data
+    profiles: ["sandbox"]
+
+  asr:
+    build:
+      context: tools/asr_service
+      dockerfile: Dockerfile
+    ports: ["7001:7001"]
+    profiles: ["asr"]
+
+  tts:
+    build:
+      context: tools/tts_service
+      dockerfile: Dockerfile
+    ports: ["7002:7002"]
+    profiles: ["tts"]
